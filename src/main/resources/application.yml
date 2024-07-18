@@ -1,0 +1,32 @@
+spring:
+    datasource:
+        driver-class-name: org.postgresql.Driver
+        url: jdbc:postgresql://121.157.150.103:35432/orbcomm_gateway?stringtype=unspecified
+        username: orbcomm
+        password: "@gccko2512"
+    jpa:
+        database-platform: org.hibernate.dialect.PostgreSQL95Dialect
+        database: POSTGRESQL
+        generate-ddl: false
+        open-in-view: false
+        show-sql: false
+        hibernate:
+            ddl-auto: validate
+        #      naming-strategy: org.hibernate.cfg.EJB3NamingStrategy
+        properties:
+            hibernate:
+                dialect : org.hibernate.dialect.PostgreSQLDialect
+                show_sql : false
+                format_sql : false
+                use_sql_comments : false
+                jdbc :
+                    time_zone : UTC
+    logging:
+        file:
+            name: ${user.dir}/log/log.log
+            max-history: 7
+            max-size: 10MB
+        level:
+            com.orbcomm.gateway_collector.repository : error
+##      com.orbcomm.gateway_receiver.controller : debug
+##      com.orbcomm.gateway_receiver.service : debug
