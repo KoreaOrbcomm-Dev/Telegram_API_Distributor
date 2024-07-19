@@ -46,7 +46,7 @@ public class ApiAccessReceivedView implements Serializable {
 
     @Column(name = "con_require_param",columnDefinition = "json")
     @JdbcTypeCode(SqlTypes.JSON)
-    private Map<String, Objects> conRequireParam;
+    private Map<String, Object> conRequireParam;
 
     @Column(name = "token_use_yn")
     private String tokenUseYn;

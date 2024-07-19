@@ -1,0 +1,2 @@
+{"ok":true,"result":[{"update_id":317849565,
+"message":{"message_id":59,"from":{"id":7138681706,"is_bot":false,"first_name":"JMPark","language_code":"ko"},"chat":{"id":7138681706,"first_name":"JMPark","type":"private"},"date":1721352175,"text":"/test","entities":[{"offset":0,"length":5,"type":"bot_command"}]}}]}
