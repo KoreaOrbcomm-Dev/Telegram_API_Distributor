@@ -1,6 +1,7 @@
 package com.orbcomm.telegram_api_distributor.util;
 
 import com.google.gson.Gson;
+import com.orbcomm.telegram_api_distributor.entity.ApiAccessReceivedView;
 import com.orbcomm.telegram_api_distributor.param.ApiConnectParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,27 +37,19 @@ public class SendUtil {
 
         try {
 
-
-
             if(dateFormat!=null&&!dateFormat.equals("")){
 
                 DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(dateFormat);
                 List<String> dateValue = (List<String>) convertMap.get("DateValue");
 
                 for(String dateParamValue : dateValue){
-
-
                     LocalDateTime setDate = null;
-
                     try {
                         if(convertMap.get(dateParamValue)==null){
-
                             setDate = date.plusSeconds(requestLastReceivedSet*(-1));
                         }else{
                             setDate = LocalDateTime.parse(convertMap.get(dateParamValue).toString(),dateTimeFormatter);
                         }
-
-
 
 
                     }catch (ClassCastException cce){
@@ -75,7 +68,6 @@ public class SendUtil {
                 }
             }
 
-
             Iterator<String> keys = defaultMap.keySet().iterator();
             while( keys.hasNext() ){
                 String strKey = keys.next();
@@ -83,12 +75,14 @@ public class SendUtil {
 
                 String getKey = "";
                 if(strValue.toString().substring(0,1).equals("@")){
+                    System.out.println(strValue.toString());
+                    System.out.println(convertMap.toString());
                     getKey = strValue.toString().substring(1);
-
                     returnMap.put(strKey,convertMap.get(getKey).toString());
                 }else{
                     returnMap.put(strKey,strValue);
                 }
+
 
             }
 
@@ -230,6 +224,67 @@ public class SendUtil {
 
         input = messageBody.getBytes(StandardCharsets.UTF_8);
         return input;
+    }
+
+
+    public ApiConnectParam requestParamSet(ApiAccessReceivedView apiAccessReceivedView, LocalDateTime date){
+
+        ApiConnectParam requestParam = new ApiConnectParam();
+
+        try {
+            String subToken = apiAccessReceivedView.getSubAddress().replaceAll("@authToken",apiAccessReceivedView.getTokenValue());
+
+            requestParam.setApiAccessId(apiAccessReceivedView.getApiAccessId());
+            requestParam.setMainUrl(apiAccessReceivedView.getApiMainAddr());
+            requestParam.setSubUrl(subToken);
+            requestParam.setConnectTimeOut(apiAccessReceivedView.getRequestConnectTimeOut());
+            requestParam.setApiRequestType(apiAccessReceivedView.getApiRequestType());
+            requestParam.setReadTimeOut(apiAccessReceivedView.getRequestReadTimeOut());
+            requestParam.setApiName(apiAccessReceivedView.getApiName());
+            requestParam.setApiQueryType(apiAccessReceivedView.getApiQueryType());
+            requestParam.setApiRequestType(apiAccessReceivedView.getApiRequestType());
+            requestParam.setCreateDate(date);
+            requestParam.setBeforeConRequstParam(apiAccessReceivedView.getConRequireParam());
+
+            String sendUrl = apiAccessReceivedView.getApiMainAddr()+subToken;
+            requestParam.setFullUrl(sendUrl);
+
+
+            if(apiAccessReceivedView.getRequestHeader()!=null){
+
+                requestParam.setRequestHeader(requestValueMapper(apiAccessReceivedView.getRequestHeader()
+                        ,apiAccessReceivedView.getConRequireParam(),apiAccessReceivedView.getRequestDateFormat(),date,apiAccessReceivedView.getRequestLastReceivedSet()));
+
+                logger.info("Access ID : {}, Get RequestHeader : {}"
+                        ,apiAccessReceivedView.getApiAccessId(),requestParam.getRequestHeader());
+            }
+            if(apiAccessReceivedView.getRequestParam()!=null){
+                requestParam.setRequestParam(requestValueMapper(apiAccessReceivedView.getRequestParam()
+                        ,apiAccessReceivedView.getConRequireParam(),apiAccessReceivedView.getRequestDateFormat(),date,apiAccessReceivedView.getRequestLastReceivedSet()));
+
+                logger.info("Access ID : {}, Get RequestParam : {}"
+                        ,apiAccessReceivedView.getApiAccessId(),requestParam.getRequestParam());
+
+            }
+            if(apiAccessReceivedView.getRequestBody()!=null){
+
+                requestParam.setRequestBody(requestValueMapper(apiAccessReceivedView.getRequestBody()
+                        ,apiAccessReceivedView.getConRequireParam(),apiAccessReceivedView.getRequestDateFormat(),date,apiAccessReceivedView.getRequestLastReceivedSet()));
+
+                logger.info("Access ID : {}, Get RequestBody : {}"
+                        ,apiAccessReceivedView.getApiAccessId(),requestParam.getRequestBody());
+
+            }
+
+            //requestParam = sendGetMessage(requestParam);
+            return requestParam;
+
+
+        }catch (Exception e){
+
+            e.printStackTrace();
+            return null;
+        }
     }
 
 

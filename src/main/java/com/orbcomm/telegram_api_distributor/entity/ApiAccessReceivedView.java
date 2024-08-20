@@ -120,4 +120,7 @@ public class ApiAccessReceivedView implements Serializable {
     @Column(name = "request_expired")
     private LocalDateTime requestExpired;
 
+    @Column(name = "sub_detail")
+    private String subDetail;
+
 }

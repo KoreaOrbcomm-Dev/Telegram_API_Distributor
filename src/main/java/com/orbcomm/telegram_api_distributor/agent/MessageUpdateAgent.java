@@ -35,7 +35,6 @@ public class MessageUpdateAgent {
             for(ApiAccessReceivedView apiAccessReceivedView : apiAccessReceivedViews){
                 if(CommonParam.runApiAccessId.get(apiAccessReceivedView.getApiAccessId())==null||
                         CommonParam.runApiAccessId.get(apiAccessReceivedView.getApiAccessId())==false){
-                    System.out.println("TEST");
 
                     ApiGetModuleRunner apiGetModuleRunner = new ApiGetModuleRunner(apiAccessReceivedView,LocalDateTime.now());
 

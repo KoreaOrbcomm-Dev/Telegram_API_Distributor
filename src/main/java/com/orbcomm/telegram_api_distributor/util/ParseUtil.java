@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
@@ -21,7 +22,7 @@ public class ParseUtil {
     @Autowired
     CommonUtil commonUtil;
 
-    SimpleDateFormat saveDateFormat = new SimpleDateFormat("yyyyMMddHHmmssSSS");
+    DateTimeFormatter saveDateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
 
 
     public boolean responseValueChecker(ApiAccessReceivedView apiAccessReceivedView, Map<String, Object> responseBody){
@@ -101,15 +102,14 @@ public class ParseUtil {
 
     }
 
-    public Map<String,Object> updateConRequireParam(ApiAccessReceivedView apiAccessReceivedView, List<TelUpdateResultParam> result){
+    public Map<String,Object> updateConRequireParam(ApiAccessReceivedView apiAccessReceivedView, List<TelUpdateResultParam> result,long updateId){
 
         Map<String,Object> returnVal = apiAccessReceivedView.getConRequireParam();
-
-
             try {
+                //데이터 있을 때 이지만 이전에 updateId를 가져왔으므로
+                /*
                 Long beforeOffset = Long.getLong(returnVal.get("offset").toString());
                 Long offset = beforeOffset;
-                System.out.println(result.size());
                 if(result.size()>0){
                     for(TelUpdateResultParam resultParam : result){
                         if(offset==null){
@@ -117,12 +117,15 @@ public class ParseUtil {
                         }else{
                             if(offset<resultParam.getUpdate_id()){
                                 offset = resultParam.getUpdate_id();
+
                             }
                         }
                     }
-                    returnVal.put("offset",offset+1);
+                    returnVal.put("offset",++offset);
+                } */
+                if(updateId!=0){
+                    returnVal.put("offset",++updateId);
                 }
-                //System.out.println(returnVal.toString());
 
 
             }catch (Exception e){
@@ -195,6 +198,7 @@ public class ParseUtil {
         String returnPath = null;
 
         String path = responseParam.getApiName();
+
 
         //String fileName = responseParam.getApiAccessId()+"_"+responseParam.getApiQueryType()+"_"+saveDateFormat.format(responseParam.getCreateDate())+"_"+Thread.currentThread().getId()+".txt";
         String fileName = responseParam.getApiAccessId()+"&"+responseParam.getApiQueryType()+"&"+saveDateFormat.format(responseParam.getCreateDate())+".txt";
@@ -465,6 +469,8 @@ public class ParseUtil {
             return null;
         }
     }
+
+
 
 
 }

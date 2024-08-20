@@ -57,24 +57,13 @@ public class ApiCollecterService {
 
     public void updateApiAccessInfo(ApiAccessReceivedView apiAccessReceivedView, ApiConnectParam responseParam){
         ApiAccessInfo apiAccessInfo = findApiAccessInfo(apiAccessReceivedView.getApiAccessId());
-
-
+        apiAccessInfo.setConRequireParam(apiAccessReceivedView.getConRequireParam());
         if(responseParam.getLastSavePath()!=null){
-            apiAccessInfo.setConRequireParam(apiAccessReceivedView.getConRequireParam());
             apiAccessInfo.setLastSavePath(responseParam.getLastSavePath());
         }
-
-        if(apiAccessReceivedView.getApiQueryType().equals(CommonParam.GET_LOGIN)){
-            apiAccessInfo.setConRequireParam(apiAccessReceivedView.getConRequireParam());
-            apiAccessInfo.setTokenValue(apiAccessReceivedView.getTokenValue());
-            apiAccessInfo.setTokenExpireDate(apiAccessReceivedView.getTokenExpireDate());
-
-        }
-
         apiAccessInfo.setLastReceived(responseParam.getCreateDate());
-
         apiAccessInfoRepository.save(apiAccessInfo);
-        CommonParam.runApiAccessId.put(apiAccessReceivedView.getApiAccessId(),false);
+
     }
 
     public void insertSendMessageHistory(ApiConnectParam responseParam){

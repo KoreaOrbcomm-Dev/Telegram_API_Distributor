@@ -17,5 +17,6 @@ public interface ApiAccessReceivedViewRepository extends JpaRepository<ApiAccess
     ApiAccessReceivedView findByAndApiAccessIdAndApiQueryType(String apiAccessId, String apiQueryType);
     ApiAccessReceivedView findByApiAccessIdAndApiVersionAndSubAddressAndConType(String apiAccessId, int apiVersion, String subAddress, String conType);
     List<ApiAccessReceivedView> findByConTypeAndApiQueryType(String contype, String apiQueryType);
+    ApiAccessReceivedView findByAndApiAccessIdAndApiQueryTypeAndSubDetail(String apiAccessId, String apiQueryType,String subDetail);
 
 }

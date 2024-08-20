@@ -7,6 +7,7 @@ import com.orbcomm.telegram_api_distributor.param.ApiConnectParam;
 import com.orbcomm.telegram_api_distributor.param.CommonParam;
 import com.orbcomm.telegram_api_distributor.param.update.TelUpdateMessageParam;
 import com.orbcomm.telegram_api_distributor.param.update.TelUpdateParam;
+import com.orbcomm.telegram_api_distributor.param.update.TelUpdateResultParam;
 import com.orbcomm.telegram_api_distributor.service.ApiCollecterService;
 import com.orbcomm.telegram_api_distributor.util.CommonUtil;
 import com.orbcomm.telegram_api_distributor.util.ParseUtil;
@@ -19,7 +20,9 @@ import java.net.HttpURLConnection;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
 public class ApiGetModuleRunner {
@@ -41,6 +44,9 @@ public class ApiGetModuleRunner {
 
     @Autowired
     ApiCollecterService apiCollecterService;
+
+    @Autowired
+    ReceivedDataParser receivedDataParser;
 
 
     int check = 1;
@@ -68,13 +74,8 @@ public class ApiGetModuleRunner {
 
             try{
 
-
                 if(apiAccessReceivedView.getTokenUseYn().toUpperCase().equals("Y")){
-
-
                     if(apiAccessReceivedView.getTokenExpireUse().toUpperCase().equals("Y")){
-
-
                         //갱신시간이 현재 시간 보다 빠를 때
                         /*if(createDate.isAfter(apiAccessReceivedView.getTokenExpireDate())){
                             this.apiAccessReceivedView = loginQuery(apiAccessReceivedView);
@@ -83,30 +84,52 @@ public class ApiGetModuleRunner {
                     }
                 }
 
-
-
-
-                ApiConnectParam requestParam = requestParamSet(apiAccessReceivedView,createDate);
-                //System.out.println(requestParam.toString());
-                ApiConnectParam responseParam = sendUtil.sendGetMessage(requestParam);
-                logger.info(responseParam.toString());
-                if(responseParam.getResponseCode()!= HttpURLConnection.HTTP_OK){
-
-
-
-
+                ApiConnectParam requestParam = sendUtil.requestParamSet(apiAccessReceivedView,createDate);
+                if(requestParam == null){
                     commonUtil.apiSendChecker(this.apiAccessReceivedView.getApiAccessId(),false);
-                    //apiCollecterService.insertSendMessageHistory(responseParam);
-
                 }else{
-                    TelUpdateParam telUpdateParam = new Gson().fromJson(responseParam.getResponseBody(), TelUpdateParam.class);
-                    System.out.println(telUpdateParam.toString());
-                    System.out.println(requestParam.getResponseBody());
-                   // ApiAccessInfo apiAccessInfo = apiCollecterService.findApiAccessInfo(apiAccessReceivedView.getApiAccessId());
-                    responseParamSave(apiAccessReceivedView,responseParam,telUpdateParam);
+                    //System.out.println(requestParam.toString());
+                    ApiConnectParam responseParam = sendUtil.sendGetMessage(requestParam);
+                    logger.info(responseParam.toString());
+                    if(responseParam.getResponseCode()!= HttpURLConnection.HTTP_OK){
 
-                }/**/
+                        commonUtil.apiSendChecker(this.apiAccessReceivedView.getApiAccessId(),false);
+                        //apiCollecterService.insertSendMessageHistory(responseParam);
 
+                    }else{
+                        TelUpdateParam telUpdateParam = new Gson().fromJson(responseParam.getResponseBody(), TelUpdateParam.class);
+                        // ApiAccessInfo apiAccessInfo = apiCollecterService.findApiAccessInfo(apiAccessReceivedView.getApiAccessId());
+                        long updateId = 0;
+                        if(telUpdateParam.getResult().size()>0){
+                            List<TelUpdateResultParam> telegramList = new ArrayList<>();
+                            for(TelUpdateResultParam resultParam : telUpdateParam.getResult()){
+                                String chatId = resultParam.getMessage().getFrom().getId().toString();
+                                if(receivedDataParser.denyUser.get(chatId)!=null){
+                                    LocalDateTime denyTime = receivedDataParser.denyUser.get(chatId);
+                                    if(LocalDateTime.now().isAfter(denyTime)){
+                                        telegramList.add(resultParam);
+
+                                        receivedDataParser.denyUser.remove(chatId);
+                                    }else {
+                                        logger.info("chat ID : "+chatId+", denyTime : "+denyTime +" denied.");
+                                    }
+                                }else{
+                                    telegramList.add(resultParam);
+                                }
+                                if(resultParam.getUpdate_id()>updateId){
+                                    updateId = resultParam.getUpdate_id();
+                                }
+                            }
+                            telUpdateParam.setResult(telegramList);
+
+                        }
+
+
+                        responseParamSave(apiAccessReceivedView,responseParam,telUpdateParam,updateId);
+
+
+                    }
+                }
 
 
             }catch (Exception e){
@@ -121,75 +144,11 @@ public class ApiGetModuleRunner {
     }
 
 
-    //전송 변수 Making
-    private ApiConnectParam requestParamSet(ApiAccessReceivedView apiAccessReceivedView, LocalDateTime date){
-
-        ApiConnectParam requestParam = new ApiConnectParam();
-
-        try {
-            String subToken = apiAccessReceivedView.getSubAddress().replaceAll("@authToken",apiAccessReceivedView.getTokenValue());
-
-            requestParam.setApiAccessId(apiAccessReceivedView.getApiAccessId());
-            requestParam.setMainUrl(apiAccessReceivedView.getApiMainAddr());
-            requestParam.setSubUrl(subToken);
-            requestParam.setConnectTimeOut(apiAccessReceivedView.getRequestConnectTimeOut());
-            requestParam.setApiRequestType(apiAccessReceivedView.getApiRequestType());
-            requestParam.setReadTimeOut(apiAccessReceivedView.getRequestReadTimeOut());
-            requestParam.setApiName(apiAccessReceivedView.getApiName());
-            requestParam.setApiQueryType(apiAccessReceivedView.getApiQueryType());
-            requestParam.setApiRequestType(apiAccessReceivedView.getApiRequestType());
-            requestParam.setCreateDate(date);
-            requestParam.setBeforeConRequstParam(apiAccessReceivedView.getConRequireParam());
-
-            String sendUrl = apiAccessReceivedView.getApiMainAddr()+subToken;
-            requestParam.setFullUrl(sendUrl);
 
 
-            if(apiAccessReceivedView.getRequestHeader()!=null){
-
-                requestParam.setRequestHeader(sendUtil.requestValueMapper(apiAccessReceivedView.getRequestHeader()
-                        ,apiAccessReceivedView.getConRequireParam(),apiAccessReceivedView.getRequestDateFormat(),createDate,apiAccessReceivedView.getRequestLastReceivedSet()));
-
-                logger.info("Access ID : {}, Get RequestHeader : {}"
-                        ,apiAccessReceivedView.getApiAccessId(),requestParam.getRequestHeader());
-            }
-            if(apiAccessReceivedView.getRequestParam()!=null){
-
-
-                requestParam.setRequestParam(sendUtil.requestValueMapper(apiAccessReceivedView.getRequestParam()
-                        ,apiAccessReceivedView.getConRequireParam(),apiAccessReceivedView.getRequestDateFormat(),createDate,apiAccessReceivedView.getRequestLastReceivedSet()));
-
-                logger.info("Access ID : {}, Get RequestParam : {}"
-                        ,apiAccessReceivedView.getApiAccessId(),requestParam.getRequestParam());
-
-            }
-            if(apiAccessReceivedView.getRequestBody()!=null){
-
-                requestParam.setRequestBody(sendUtil.requestValueMapper(apiAccessReceivedView.getRequestBody()
-                        ,apiAccessReceivedView.getConRequireParam(),apiAccessReceivedView.getRequestDateFormat(),createDate,apiAccessReceivedView.getRequestLastReceivedSet()));
-
-                logger.info("Access ID : {}, Get RequestBody : {}"
-                        ,apiAccessReceivedView.getApiAccessId(),requestParam.getRequestBody());
-
-            }
-
-            requestParam = sendUtil.sendGetMessage(requestParam);
-
-
-
-
-        }catch (Exception e){
-            commonUtil.apiSendChecker(this.apiAccessReceivedView.getApiAccessId(),false);
-            e.printStackTrace();
-        }
-
-        return requestParam;
-    }
-
-    private ApiAccessReceivedView responseParamSave(ApiAccessReceivedView apiAccessReceivedView, ApiConnectParam responseParam,TelUpdateParam telUpdateParam ){
+    private ApiAccessReceivedView responseParamSave(ApiAccessReceivedView apiAccessReceivedView, ApiConnectParam responseParam,TelUpdateParam telUpdateParam,long updateId ){
 
         Map<String,Object> responseParserMap =null;
-
         try {
 
             responseParserMap = parseUtil.returnResponseParserMap(apiAccessReceivedView.getResponseDataType(),responseParam.getResponseBody());
@@ -200,43 +159,41 @@ public class ApiGetModuleRunner {
                 responseParserMap = (Map<String, Object>) responseParserMap.get(apiAccessReceivedView.getResponseHeaderValue());
 
             }
-
-
             //정상데이터 수신이면(데이터가 있으면)
             if(parseUtil.responseValueChecker(apiAccessReceivedView, responseParserMap)){
 
-
                 responseParam.setApiResponseStatus(parseUtil.getApiresponseStatus(apiAccessReceivedView,responseParserMap));
-                Map<String,Object> conRequireParam = parseUtil.updateConRequireParam(apiAccessReceivedView,telUpdateParam.getResult());
+                Map<String,Object> conRequireParam = parseUtil.updateConRequireParam(apiAccessReceivedView,telUpdateParam.getResult(),updateId);
 
                 if(conRequireParam==null){
 
-
                 }else{
+                    this.apiAccessReceivedView.setConRequireParam(conRequireParam);
                     apiAccessReceivedView.setConRequireParam(conRequireParam);
+
                     if(CommonParam.GET_SUBSCRIBE.equals(apiAccessReceivedView.getApiQueryType())){
 
-                        if(parseUtil.saveDataCheck(responseParam)){
-                            String lastSavePath = parseUtil.saveResponseData(responseParam);
-                            responseParam.setLastSavePath(lastSavePath);
+
+                        if(telUpdateParam.getResult().size()>0){
+                            receivedDataParser.insertReceivedData(telUpdateParam.getResult());
+                            apiCollecterService.insertSendMessageHistory(responseParam);
+                        }
+                        if(updateId>0){
+                            apiCollecterService.updateApiAccessInfo(apiAccessReceivedView,responseParam);
                         }
 
 
                     }
-                    //apiCollecterService.insertSendMessageHistory(responseParam);
-                    apiCollecterService.updateApiAccessInfo(apiAccessReceivedView,responseParam);
-
-
 
                 }
 
-
             }else{//error 혹은 수신데이터 없을 때
-                responseParam.setApiResponseStatus(parseUtil.getApiresponseStatus(apiAccessReceivedView,responseParserMap));
+                //responseParam.setApiResponseStatus(parseUtil.getApiresponseStatus(apiAccessReceivedView,responseParserMap));
                 //apiCollecterService.insertSendMessageHistory(responseParam);
-                apiCollecterService.updateApiAccessInfo(apiAccessReceivedView,responseParam);
+                //apiCollecterService.updateApiAccessInfo(apiAccessReceivedView,responseParam);
 
             }/**/
+            CommonParam.runApiAccessId.put(apiAccessReceivedView.getApiAccessId(),false);
 
         }catch (Exception e){
             e.printStackTrace();
