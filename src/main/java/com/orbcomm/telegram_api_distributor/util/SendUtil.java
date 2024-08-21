@@ -75,8 +75,6 @@ public class SendUtil {
 
                 String getKey = "";
                 if(strValue.toString().substring(0,1).equals("@")){
-                    System.out.println(strValue.toString());
-                    System.out.println(convertMap.toString());
                     getKey = strValue.toString().substring(1);
                     returnMap.put(strKey,convertMap.get(getKey).toString());
                 }else{
@@ -255,15 +253,13 @@ public class SendUtil {
                 requestParam.setRequestHeader(requestValueMapper(apiAccessReceivedView.getRequestHeader()
                         ,apiAccessReceivedView.getConRequireParam(),apiAccessReceivedView.getRequestDateFormat(),date,apiAccessReceivedView.getRequestLastReceivedSet()));
 
-                logger.info("Access ID : {}, Get RequestHeader : {}"
-                        ,apiAccessReceivedView.getApiAccessId(),requestParam.getRequestHeader());
+                //logger.info("Access ID : {}, Get RequestHeader : {}",apiAccessReceivedView.getApiAccessId(),requestParam.getRequestHeader());
             }
             if(apiAccessReceivedView.getRequestParam()!=null){
                 requestParam.setRequestParam(requestValueMapper(apiAccessReceivedView.getRequestParam()
                         ,apiAccessReceivedView.getConRequireParam(),apiAccessReceivedView.getRequestDateFormat(),date,apiAccessReceivedView.getRequestLastReceivedSet()));
 
-                logger.info("Access ID : {}, Get RequestParam : {}"
-                        ,apiAccessReceivedView.getApiAccessId(),requestParam.getRequestParam());
+                //logger.info("Access ID : {}, Get RequestParam : {}",apiAccessReceivedView.getApiAccessId(),requestParam.getRequestParam());
 
             }
             if(apiAccessReceivedView.getRequestBody()!=null){

@@ -23,6 +23,7 @@ public class CommonParam {
 
     public static final String SUB_DETAIL_SEND_MESSAGE = "SEND_MESSAGE";
     public static final String SUB_DETAIL_SEND_LOCATION = "SEND_LOCATION";
+    public static final String SUB_DETAIL_SEND_HTML = "SEND_HTML";
 
 
     public static final String GET_LOGIN = "LOGIN";
@@ -33,6 +34,12 @@ public class CommonParam {
 
     public static final int THREAD_QUEUE_COUNT = 10;
     public static final int DENY_MINUTE = 5;
+
+    public static final String HELP_STRING = "/help";
+    public static final String CERT_STRING = "/cert";
+    public static final String DEVICE_LOCATION_STRING = "/dev_loc";
+    public static final String DEVICE_SEARCH_STRING = "/dev_src";
+    public static final String DEVICE_NMS_STRING = "/dev_nms";
 
 
 }

@@ -90,7 +90,8 @@ public class ApiGetModuleRunner {
                 }else{
                     //System.out.println(requestParam.toString());
                     ApiConnectParam responseParam = sendUtil.sendGetMessage(requestParam);
-                    logger.info(responseParam.toString());
+                    logger.info("Access ID : {}, Request Param : {}, response Code : {}, response Body: {}",
+                            responseParam.getApiAccessId(),responseParam.getRequestParam(),responseParam.getResponseCode(),responseParam.getResponseBody());
                     if(responseParam.getResponseCode()!= HttpURLConnection.HTTP_OK){
 
                         commonUtil.apiSendChecker(this.apiAccessReceivedView.getApiAccessId(),false);
