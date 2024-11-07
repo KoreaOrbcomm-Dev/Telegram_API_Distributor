@@ -39,6 +39,15 @@ public interface ApiGroupDataCurrentViewRepository extends JpaRepository<ApiGrou
             "   and use_yn = 'Y'     " +
             "   and user_expired_date>now() ",nativeQuery = true)
     String getUserID(@Param("p_chat_id") String p_chat_id);
+
+
+    @Query(value = "select group_id from gateway.device_group_mp dgm   " +
+            "where device_id = :p_device_id   " +
+            "and group_id = (   " +
+            "select user_info.group_id from gateway.user_info   " +
+            "where user_id = :p_user_id)   " +
+            "and use_at ='Y'",nativeQuery = true)
+    String getGroupId(@Param("p_device_id")String p_device_id,@Param("p_user_id") String p_user_id);
     
     @Query(value = "select   " +
             "    di.device_id   " +

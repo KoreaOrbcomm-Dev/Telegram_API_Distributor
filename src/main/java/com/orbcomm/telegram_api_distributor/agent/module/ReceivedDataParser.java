@@ -11,6 +11,7 @@ import com.orbcomm.telegram_api_distributor.repository.ApiAccessReceivedViewRepo
 import com.orbcomm.telegram_api_distributor.repository.ApiGroupDataCurrentViewRepository;
 import com.orbcomm.telegram_api_distributor.repository.ApiNmsReceivedParsedDiagViewRepository;
 import com.orbcomm.telegram_api_distributor.repository.KakaoBotUserInfoRepository;
+import com.orbcomm.telegram_api_distributor.util.LogUtil;
 import com.orbcomm.telegram_api_distributor.util.ParseUtil;
 import com.orbcomm.telegram_api_distributor.util.SendUtil;
 import org.postgresql.util.PSQLException;
@@ -54,6 +55,9 @@ public class ReceivedDataParser {
 
     @Autowired
     SendUtil sendUtil;
+
+    @Autowired
+    LogUtil logUtil;
 
     ApiAccessReceivedView apiAccessSendMessageView =null;
     ApiAccessReceivedView apiAccessSendLocationView =null;
@@ -114,17 +118,26 @@ public class ReceivedDataParser {
                     if(telUpdateResultParam.getMessage().getText()!=null){
                         String[] messageParse = telUpdateResultParam.getMessage().getText().split(" ");
                         KakaoBotUserInfo kakaoBotUserInfo = null;
+                        String userId = null;
                        switch (messageParse[0]) {
-                           case CommonParam.HELP_STRING:
+                           case CommonParam.START_STRING:
+                               apiAccessSendInfo.getConRequireParam().put("sendMessage","Welcome");
 
-                               if(telUpdateResultParam.getMessage().getFrom().getLanguage_code()!=null && telUpdateResultParam.getMessage().getFrom().getLanguage_code().equals("ko")){
-                                   apiAccessSendInfo.getConRequireParam().put("sendMessage",helpStringKor);
+                               break;
+                           case CommonParam.HELP_STRING:
+                               userId = apiGroupDataCurrentViewRepository.getUserID(chatId);
+                               if(userId!=null){
+                                   if(telUpdateResultParam.getMessage().getFrom().getLanguage_code()!=null && telUpdateResultParam.getMessage().getFrom().getLanguage_code().equals("ko")){
+                                       apiAccessSendInfo.getConRequireParam().put("sendMessage",helpStringKor);
+                                   }else{
+                                       apiAccessSendInfo.getConRequireParam().put("sendMessage",helpString);
+                                   }
+                                   failed =false;
+                                   logUtil.setUserLog(userId,CommonParam.HELP_STRING,chatId,null);
                                }else{
-                                   apiAccessSendInfo.getConRequireParam().put("sendMessage",helpString);
+                                   apiAccessSendInfo.getConRequireParam().put("sendMessage","[Help] Unverified account");
                                }
 
-
-                               failed =false;
                                break;
                            case CommonParam.CERT_STRING:
                                String messageKey = messageParse[0].substring(1);
@@ -134,6 +147,7 @@ public class ReceivedDataParser {
                                    if(kakaoBotUserInfo!=null){
                                        apiAccessSendInfo.getConRequireParam().put("sendMessage","[Cert] Success");
                                        failed =false;
+                                       logUtil.setUserLog(kakaoBotUserInfo.getUserId(),CommonParam.CERT_STRING,chatId,messageValue);
                                    }else{
                                        apiAccessSendInfo.getConRequireParam().put("sendMessage","[Cert] Fail");
 
@@ -144,7 +158,7 @@ public class ReceivedDataParser {
                                break;
                            case CommonParam.DEVICE_LOCATION_STRING:
                                if(messageParse[1]!=null){
-                                   String userId = apiGroupDataCurrentViewRepository.getUserID(chatId);
+                                   userId = apiGroupDataCurrentViewRepository.getUserID(chatId);
                                    String deviceId = messageParse[1].trim();
                                    if(userId!=null){
                                        ApiGroupDataCurrentView apiGroupDataCurrentView =
@@ -165,6 +179,7 @@ public class ReceivedDataParser {
                                            apiAccessSendInfo.getConRequireParam().put("sendMessage",sendMessage);
 
                                            failed =false;
+                                           logUtil.setUserLog(userId,CommonParam.DEVICE_LOCATION_STRING,chatId,deviceId);
                                        }else{
                                            apiAccessSendInfo.getConRequireParam().put("sendMessage","[Device_location] \nThere are no devices available for viewing.");
                                            failed =false;
@@ -175,7 +190,7 @@ public class ReceivedDataParser {
                                }
                                break;
                            case CommonParam.DEVICE_SEARCH_STRING:
-                               String userId = apiGroupDataCurrentViewRepository.getUserID(chatId);
+                               userId = apiGroupDataCurrentViewRepository.getUserID(chatId);
                                if(userId!=null && (messageParse[1]!=null && messageParse[1].trim().length()>=2)){
                                    String alias = messageParse[1].trim();
                                    List<ApiGroupDataCurrentView> apiGroupDataCurrentViewList =
@@ -189,8 +204,8 @@ public class ReceivedDataParser {
                                            sendMessage = sendMessage+"\n"+"[DeviceList] Data Count : "+apiGroupDataCurrentViewList.size();
                                            apiAccessSendInfo.getConRequireParam().put("sendMessage",sendMessage);
                                        }
-
                                        failed =false;
+                                       logUtil.setUserLog(userId,CommonParam.DEVICE_SEARCH_STRING,chatId,alias);
                                    }else{
                                        apiAccessSendInfo.getConRequireParam().put("sendMessage","[DeviceList] Empty.");
                                        failed =false;
@@ -200,67 +215,73 @@ public class ReceivedDataParser {
                                }
                                break;
                            case CommonParam.DEVICE_NMS_STRING:
-                               if(messageParse[1]!=null){
+                               if(messageParse[1]!=null && !messageParse[1].trim().equals("")){
                                    String deviceId = messageParse[1].trim();
+                                   userId = apiGroupDataCurrentViewRepository.getUserID(chatId);
 
-                                   List<ApiNmsReceivedParsedDiagView> apiNmsReceivedParsedDiagViewList = apiNmsReceivedParsedDiagViewRepository.findByDeviceId(deviceId);
-                                   if(apiNmsReceivedParsedDiagViewList!=null && apiNmsReceivedParsedDiagViewList.size()>0){
-                                       ApiAccessReceivedView apiAccessSendLocationInfo = apiAccessSendLocationView;
-                                       apiAccessSendLocationInfo.getConRequireParam().put("chatId",chatId);
-                                       apiAccessSendLocationInfo.getConRequireParam().put("latitude",apiNmsReceivedParsedDiagViewList.get(0).getLatitude());
-                                       apiAccessSendLocationInfo.getConRequireParam().put("longitude",apiNmsReceivedParsedDiagViewList.get(0).getLongitude());
-                                       apiAccessReceivedViewList.add(apiAccessSendLocationInfo);
+                                   if(userId!=null){
+                                       String groupId= apiGroupDataCurrentViewRepository.getGroupId(deviceId,userId);
 
-                                       String sendMessage = "Alias : "+apiNmsReceivedParsedDiagViewList.get(0).getVhcleNm()+"\n";
-                                       sendMessage = sendMessage+"Device ID : "+apiNmsReceivedParsedDiagViewList.get(0).getDeviceId()+"\n";
-                                       sendMessage = sendMessage+"Status : "+apiNmsReceivedParsedDiagViewList.get(0).getStatus()+"\n";
-                                       sendMessage = sendMessage+"Managed : "+apiNmsReceivedParsedDiagViewList.get(0).getManageCrpNm()+"\n";
-                                       sendMessage = sendMessage+"Company : "+apiNmsReceivedParsedDiagViewList.get(0).getCrpNm()+"\n";
-                                       if(apiNmsReceivedParsedDiagViewList.get(0).getEventDate()!=null){
-                                           sendMessage = sendMessage+"Event Date : "+dateTimeFormatter.format(apiNmsReceivedParsedDiagViewList.get(0).getEventDate())+" (UTC)\n";
-                                           sendMessage = sendMessage+"Event Time Gap : "+apiNmsReceivedParsedDiagViewList.get(0).getEventDiff()+"\n";                                       }
+                                       if(groupId!=null){
+                                           List<ApiNmsReceivedParsedDiagView> apiNmsReceivedParsedDiagViewList = apiNmsReceivedParsedDiagViewRepository.findByDeviceId(deviceId);
+                                           if(apiNmsReceivedParsedDiagViewList!=null && apiNmsReceivedParsedDiagViewList.size()>0){
+                                               ApiAccessReceivedView apiAccessSendLocationInfo = apiAccessSendLocationView;
+                                               apiAccessSendLocationInfo.getConRequireParam().put("chatId",chatId);
+                                               apiAccessSendLocationInfo.getConRequireParam().put("latitude",apiNmsReceivedParsedDiagViewList.get(0).getLatitude());
+                                               apiAccessSendLocationInfo.getConRequireParam().put("longitude",apiNmsReceivedParsedDiagViewList.get(0).getLongitude());
+                                               apiAccessReceivedViewList.add(apiAccessSendLocationInfo);
 
-                                       sendMessage = sendMessage+"Received Date : "+dateTimeFormatter.format(apiNmsReceivedParsedDiagViewList.get(0).getReceivedDate())+" (UTC)\n";
-                                       sendMessage = sendMessage+"Received Time Gap : "+apiNmsReceivedParsedDiagViewList.get(0).getReceivedDiff()+"\n";
-                                       sendMessage = sendMessage+"Day Count : "+apiNmsReceivedParsedDiagViewList.get(0).getDayCount()+"\n";
-
-                                       if(apiNmsReceivedParsedDiagViewList.get(0).getMessageJson()!=null && apiNmsReceivedParsedDiagViewList.get(0).getMessageJson().get("RegionName")!=null){
-                                           sendMessage = sendMessage+"Region : "+apiNmsReceivedParsedDiagViewList.get(0).getMessageJson().get("RegionName")+"\n";
-                                       }
-
-                                       int sendCount = 1;
-                                       for(ApiNmsReceivedParsedDiagView apiNmsReceivedParsedDiagView :apiNmsReceivedParsedDiagViewList){
-                                           if(apiNmsReceivedParsedDiagView.getGroupSource()!=null){
-                                               sendMessage = sendMessage+"\n-------- Send"+(sendCount++) +" --------\n";
-                                               sendMessage = sendMessage+"  Sender : "+apiNmsReceivedParsedDiagView.getGroupSource()+"\n";
-                                               sendMessage = sendMessage+"  Success : "+apiNmsReceivedParsedDiagView.getPushSuccess()+"\n";
-                                               if(apiNmsReceivedParsedDiagView.getPushSuccess().equals("Y")){
-                                                   sendMessage = sendMessage+"  Send Date : "+dateTimeFormatter.format(apiNmsReceivedParsedDiagView.getSendDate())+" (UTC)\n";
-                                                   sendMessage = sendMessage+"  Send Time Gap : "+apiNmsReceivedParsedDiagView.getSendDiff()+"\n";
-                                                   sendMessage = sendMessage+"  Send Type : "+apiNmsReceivedParsedDiagView.getPushType()+"\n";
-                                                   sendMessage = sendMessage+"  Address : \n  "+apiNmsReceivedParsedDiagView.getPushAddress()+"\n";
+                                               String sendMessage = "Alias : "+apiNmsReceivedParsedDiagViewList.get(0).getVhcleNm()+"\n";
+                                               sendMessage = sendMessage+"Device ID : "+apiNmsReceivedParsedDiagViewList.get(0).getDeviceId()+"\n";
+                                               sendMessage = sendMessage+"Status : "+apiNmsReceivedParsedDiagViewList.get(0).getStatus()+"\n";
+                                               sendMessage = sendMessage+"Managed : "+apiNmsReceivedParsedDiagViewList.get(0).getManageCrpNm()+"\n";
+                                               sendMessage = sendMessage+"Company : "+apiNmsReceivedParsedDiagViewList.get(0).getCrpNm()+"\n";
+                                               if(apiNmsReceivedParsedDiagViewList.get(0).getEventDate()!=null){
+                                                   sendMessage = sendMessage+"Event Date : "+dateTimeFormatter.format(apiNmsReceivedParsedDiagViewList.get(0).getEventDate())+" (UTC)\n";
+                                                   sendMessage = sendMessage+"Event Time Gap : "+apiNmsReceivedParsedDiagViewList.get(0).getEventDiff()+"\n";
                                                }
 
+                                               if(apiNmsReceivedParsedDiagViewList.get(0).getReceivedDate()!=null){
+                                                   sendMessage = sendMessage+"Received Date : "+dateTimeFormatter.format(apiNmsReceivedParsedDiagViewList.get(0).getReceivedDate())+" (UTC)\n";
+                                                   sendMessage = sendMessage+"Received Time Gap : "+apiNmsReceivedParsedDiagViewList.get(0).getReceivedDiff()+"\n";
+                                               }
+                                               sendMessage = sendMessage+"Day Count : "+apiNmsReceivedParsedDiagViewList.get(0).getDayCount()+"\n";
+
+                                               if(apiNmsReceivedParsedDiagViewList.get(0).getMessageJson()!=null && apiNmsReceivedParsedDiagViewList.get(0).getMessageJson().get("RegionName")!=null){
+                                                   sendMessage = sendMessage+"Region : "+apiNmsReceivedParsedDiagViewList.get(0).getMessageJson().get("RegionName")+"\n";
+                                               }
+                                               int sendCount = 1;
+                                               for(ApiNmsReceivedParsedDiagView apiNmsReceivedParsedDiagView :apiNmsReceivedParsedDiagViewList){
+                                                   if(apiNmsReceivedParsedDiagView.getGroupSource()!=null){
+                                                       sendMessage = sendMessage+"\n-------- Send"+(sendCount++) +" --------\n";
+                                                       sendMessage = sendMessage+"  Sender : "+apiNmsReceivedParsedDiagView.getGroupSource()+"\n";
+                                                       sendMessage = sendMessage+"  Success : "+apiNmsReceivedParsedDiagView.getPushSuccess()+"\n";
+                                                       if(apiNmsReceivedParsedDiagView.getPushSuccess().equals("Y")){
+                                                           sendMessage = sendMessage+"  Send Date : "+dateTimeFormatter.format(apiNmsReceivedParsedDiagView.getSendDate())+" (UTC)\n";
+                                                           sendMessage = sendMessage+"  Send Time Gap : "+apiNmsReceivedParsedDiagView.getSendDiff()+"\n";
+                                                           sendMessage = sendMessage+"  Send Type : "+apiNmsReceivedParsedDiagView.getPushType()+"\n";
+                                                           sendMessage = sendMessage+"  Address : \n  "+apiNmsReceivedParsedDiagView.getPushAddress()+"\n";
+                                                       }
+                                                   }
+                                               }
+                                               if(sendCount>1){
+                                                   sendMessage = sendMessage+"-----------------------";
+                                               }
+                                               if(apiNmsReceivedParsedDiagViewList.get(0).getIoJson()!=null && apiNmsReceivedParsedDiagViewList.get(0).getIoJson().get("period")!=null){
+                                                   sendMessage = sendMessage+"\n-------- NMS --------\n";
+                                                   sendMessage = sendMessage+"  NMS Type : "+(apiNmsReceivedParsedDiagViewList.get(0).getIoJson().get("period").toString().equals("1")?"Hourly\n":"Daily\n");
+                                                   sendMessage = sendMessage+"  Diag Date : "+dateTimeFormatter.format(apiNmsReceivedParsedDiagViewList.get(0).getDiagDate())+" (UTC)\n";
+                                                   sendMessage = sendMessage+"  Sat Cnr : "+apiNmsReceivedParsedDiagViewList.get(0).getSatCnr()+"\n";
+                                                   sendMessage = sendMessage+"  Power On Time : "+apiNmsReceivedParsedDiagViewList.get(0).getSt6100On()+"\n";
+                                                   sendMessage = sendMessage+"  Power On Count : "+apiNmsReceivedParsedDiagViewList.get(0).getPowerOnCount()+"\n";
+                                                   sendMessage = sendMessage+"  Sat On Time : "+apiNmsReceivedParsedDiagViewList.get(0).getSatOnTime()+"\n";
+                                                   sendMessage = sendMessage+"  Sat Cut Off : "+apiNmsReceivedParsedDiagViewList.get(0).getSatCutOffCount()+"\n";
+                                               }
+                                               apiAccessSendInfo.getConRequireParam().put("sendMessage",sendMessage);
+                                               failed = false;
+                                               logUtil.setUserLog(userId,CommonParam.DEVICE_NMS_STRING,chatId,deviceId);
                                            }
                                        }
-                                       if(sendCount>1){
-                                           sendMessage = sendMessage+"-----------------------";
-                                       }
-
-                                       if(apiNmsReceivedParsedDiagViewList.get(0).getIoJson()!=null && apiNmsReceivedParsedDiagViewList.get(0).getIoJson().get("period")!=null){
-                                           sendMessage = sendMessage+"\n-------- NMS --------\n";
-                                           sendMessage = sendMessage+"  NMS Type : "+(apiNmsReceivedParsedDiagViewList.get(0).getIoJson().get("period").toString().equals("1")?"Hourly\n":"Daily\n");
-                                           sendMessage = sendMessage+"  Diag Date : "+dateTimeFormatter.format(apiNmsReceivedParsedDiagViewList.get(0).getDiagDate())+" (UTC)\n";
-                                           sendMessage = sendMessage+"  Sat Cnr : "+apiNmsReceivedParsedDiagViewList.get(0).getSatCnr()+"\n";
-                                           sendMessage = sendMessage+"  Power On Time : "+apiNmsReceivedParsedDiagViewList.get(0).getSt6100On()+"\n";
-                                           sendMessage = sendMessage+"  Power On Count : "+apiNmsReceivedParsedDiagViewList.get(0).getPowerOnCount()+"\n";
-                                           sendMessage = sendMessage+"  Sat On Time : "+apiNmsReceivedParsedDiagViewList.get(0).getSatOnTime()+"\n";
-                                           sendMessage = sendMessage+"  Sat Cut Off : "+apiNmsReceivedParsedDiagViewList.get(0).getSatCutOffCount()+"\n";
-
-                                       }
-                                       apiAccessSendInfo.getConRequireParam().put("sendMessage",sendMessage);
-                                       failed = false;
-
                                    }
                                }else{
                                    apiAccessSendInfo.getConRequireParam().put("sendMessage","[NMS] Required Field Empty.");
@@ -312,8 +333,6 @@ public class ReceivedDataParser {
                             }
                         }
                     }
-
-
                 }catch (Exception e){
                     e.printStackTrace();
                 }

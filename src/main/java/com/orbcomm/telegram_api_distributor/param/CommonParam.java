@@ -35,6 +35,7 @@ public class CommonParam {
     public static final int THREAD_QUEUE_COUNT = 10;
     public static final int DENY_MINUTE = 5;
 
+    public static final String START_STRING = "/start";
     public static final String HELP_STRING = "/help";
     public static final String CERT_STRING = "/cert";
     public static final String DEVICE_LOCATION_STRING = "/dev_loc";

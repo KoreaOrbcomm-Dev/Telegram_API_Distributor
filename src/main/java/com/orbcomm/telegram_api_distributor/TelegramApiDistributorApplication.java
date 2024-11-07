@@ -15,6 +15,8 @@ public class TelegramApiDistributorApplication {
     public void started() {
         // timezone UTC 셋팅
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        System.setProperty("jdk.tls.client.protocols", "TLSv1.2");
+        System.setProperty("https.protocols", "TLSv1.2");
     }
     public static void main(String[] args) {
         SpringApplication.run(TelegramApiDistributorApplication.class, args);

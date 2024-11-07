@@ -70,7 +70,7 @@ public class ApiGetModuleRunner {
 
         check = 1;
 
-        new Thread(() -> {
+        //new Thread(() -> {
 
             try{
 
@@ -104,22 +104,25 @@ public class ApiGetModuleRunner {
                         if(telUpdateParam.getResult().size()>0){
                             List<TelUpdateResultParam> telegramList = new ArrayList<>();
                             for(TelUpdateResultParam resultParam : telUpdateParam.getResult()){
-                                String chatId = resultParam.getMessage().getFrom().getId().toString();
-                                if(receivedDataParser.denyUser.get(chatId)!=null){
-                                    LocalDateTime denyTime = receivedDataParser.denyUser.get(chatId);
-                                    if(LocalDateTime.now().isAfter(denyTime)){
-                                        telegramList.add(resultParam);
+                                if(resultParam.getMessage()!=null){
+                                    String chatId = resultParam.getMessage().getFrom().getId().toString();
+                                    if(receivedDataParser.denyUser.get(chatId)!=null){
+                                        LocalDateTime denyTime = receivedDataParser.denyUser.get(chatId);
+                                        if(LocalDateTime.now().isAfter(denyTime)){
+                                            telegramList.add(resultParam);
 
-                                        receivedDataParser.denyUser.remove(chatId);
-                                    }else {
-                                        logger.info("chat ID : "+chatId+", denyTime : "+denyTime +" denied.");
+                                            receivedDataParser.denyUser.remove(chatId);
+                                        }else {
+                                            logger.info("chat ID : "+chatId+", denyTime : "+denyTime +" denied.");
+                                        }
+                                    }else{
+                                        telegramList.add(resultParam);
                                     }
-                                }else{
-                                    telegramList.add(resultParam);
                                 }
                                 if(resultParam.getUpdate_id()>updateId){
                                     updateId = resultParam.getUpdate_id();
                                 }
+
                             }
                             telUpdateParam.setResult(telegramList);
 
@@ -139,7 +142,7 @@ public class ApiGetModuleRunner {
                 commonUtil.apiSendChecker(this.apiAccessReceivedView.getApiAccessId(),false);
             }
 
-        }).start();
+        //}).start();
 
         return check;
     }
